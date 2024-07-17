@@ -13,6 +13,7 @@ async def chat_data_manage(update: Update, _: ContextTypes.DEFAULT_TYPE):
     message = update.effective_message
     text = common.get_chat_info(chat)
     await message.reply_text(text=text)
+    # TODO
 
 
 async def chat_title_update(update: Update, _: ContextTypes.DEFAULT_TYPE):
@@ -27,7 +28,7 @@ async def chat_migration(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"[{update.effective_chat.title}]({update.effective_user.name})"
         + "<chat_migration>"
     )
-    message = update.message
+    message = update.effective_message
     application = context.application
     application.migrate_chat_data(message=message)
     old_chat_id = message.migrate_from_chat_id

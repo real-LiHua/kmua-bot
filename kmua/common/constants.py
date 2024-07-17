@@ -10,7 +10,7 @@ from kmua.config import data_dir, settings
 QUOTE_PAGE_SIZE = 5
 PAGE_JUMP_SIZE = 20
 
-DETAIL_HELP_URL = "https://krau.github.io/kmua-bot/"
+DETAIL_HELP_URL = "https://kmua.unv.app"
 OPEN_SOURCE_URL = "https://github.com/krau/kmua-bot/"
 
 BACK_HOME_MARKUP = InlineKeyboardMarkup(
@@ -20,9 +20,14 @@ BACK_HOME_MARKUP = InlineKeyboardMarkup(
         ]
     ]
 )
-
 DB_PATH = (
     Path(data_dir / settings.get("db_url", "sqlite:///./data/kmua.db").split("/")[-1])
-    if settings.get("db_url").startswith("sqlite")
+    if settings.get("db_url", "sqlite:///./data/kmua.db").startswith("sqlite")
     else None
+)
+DEFAULT_BIG_AVATAR_PATH = (
+    Path(__file__).resolve().parent.parent / "resource" / "Akkarin.jpg"
+)
+DEFAULT_SMALL_AVATAR_PATH = (
+    Path(__file__).resolve().parent.parent / "resource" / "Akkarin_small.png"
 )

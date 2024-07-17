@@ -15,7 +15,9 @@ def replace_special_char(text: str):
     return text
 
 
-async def slash(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def slash(update: Update, _: ContextTypes.DEFAULT_TYPE):
+    if update.message_reaction:
+        return
     logger.info(
         f"[{update.effective_chat.title}]({update.effective_user.name})"
         + f" {update.effective_message.text}"
@@ -85,4 +87,3 @@ async def slash(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_markdown_v2(
         text, disable_web_page_preview=True
     )
-    common.message_recorder(update, context)

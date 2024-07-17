@@ -56,21 +56,20 @@ async def track_chats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     chat = update.effective_chat
     if chat.type == Chat.PRIVATE:
         if not was_member and is_member:
-            logger.debug(f"{cause_name} started the bot")
+            logger.info(f"{cause_name} started the bot")
 
         elif was_member and not is_member:
-            logger.debug(f"{cause_name} blocked the bot")
+            logger.info(f"{cause_name} blocked the bot")
 
     elif chat.type in [Chat.GROUP, Chat.SUPERGROUP]:
         if not was_member and is_member:
-            logger.debug(f"{cause_name} 将bot添加到群组 {chat.title}")
+            logger.info(f"{cause_name} 将bot添加到群组 {chat.title}")
 
         elif was_member and not is_member:
-            logger.debug(f"{cause_name} 将bot移出群组 {chat.title}")
-            dao.delete_chat(chat)
+            logger.info(f"{cause_name} 将bot移出群组 {chat.title}")
 
     elif not was_member and is_member:
-        logger.debug(f"{cause_name} 将bot添加到频道 {chat.title}")
+        logger.info(f"{cause_name} 将bot添加到频道 {chat.title}")
         try:
             await asyncio.sleep(3)
             await context.bot.leave_chat(chat.id)
@@ -78,7 +77,7 @@ async def track_chats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             logger.error(f"退出频道时出错 {chat.title}: {err}")
 
     elif was_member and not is_member:
-        logger.debug(f"{cause_name} 将bot移出频道 {chat.title}")
+        logger.info(f"{cause_name} 将bot移出频道 {chat.title}")
 
 
 async def on_member_left(update: Update, _: ContextTypes.DEFAULT_TYPE):
@@ -105,10 +104,10 @@ async def on_member_join(update: Update, _: ContextTypes.DEFAULT_TYPE):
     logger.debug(f"{joined_user} 加入了群聊 {chat.title} ")
     if joined_user.is_bot:
         return
-    db_chat = dao.add_chat(chat)
-    greet = db_chat.greet
-    if greet:
-        greet = greet.format(
+    chat_config = dao.get_chat_config(chat)
+
+    if chat_config.greeting:
+        greet = chat_config.greeting.format(
             user=joined_user.full_name,
             chat=chat.title,
         )

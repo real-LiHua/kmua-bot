@@ -25,7 +25,6 @@ _start_bot_markup = InlineKeyboardMarkup(
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"[{update.effective_user.name}] <start>")
-    common.message_recorder(update, context)
     if update.effective_chat.type != "private":
         if update.effective_message.text == "/start":
             # 如果是群聊，且没有艾特，直接返回
@@ -75,8 +74,7 @@ async def _start_in_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ],
         ]
     )
-    sent_message = await update.effective_message.reply_text(
+    await update.effective_message.reply_text(
         text="Nya!",
         reply_markup=start_bot_markup,
     )
-    logger.info(f"Bot:{sent_message.text}")

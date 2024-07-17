@@ -1,5 +1,6 @@
 import asyncio
 
+from telegram import Update
 from telegram.ext import (
     CallbackQueryHandler,
     ChatMemberHandler,
@@ -14,17 +15,20 @@ from kmua import dao
 
 from .callbacks import (
     bilibili,
+    chatconfig,
     chatdata,
     chatinfo,
     chatmember,
     delete_events,
     help,
+    image,
     ip,
     manage,
     pin,
     quote,
     remake,
     reply,
+    search,
     setu,
     slash,
     start,
@@ -57,7 +61,7 @@ help_handler = CommandHandler(
     "help", help.help, filters=kmua_filters.mention_or_private_filter
 )
 error_notice_control_handler = CommandHandler(
-    "error_notice", manage.error_notice_control
+    "error_notice", manage.error_notice_control, filters=filters.ChatType.PRIVATE
 )
 remake_handler = CommandHandler("remake", remake.remake)
 
@@ -114,14 +118,39 @@ refresh_user_data_by_id_handler = CommandHandler(
 switch_unpin_channel_pin_handler = CommandHandler(
     "switch_unpin_channel_pin",
     pin.switch_unpin_channel_pin,
-    filters=filters.ChatType.GROUPS,
+    filters=filters.ChatType.GROUPS & kmua_filters.mention_bot_filter,
 )
 reset_contents_handler = CommandHandler("reset_contents", reply.reset_contents)
-
+fix_quotes_handler = CommandHandler("fix_quotes", manage.fix_quotes)
+fix_chats_handler = CommandHandler("fix_chats", manage.fix_chats)
+enable_search_handler = CommandHandler(
+    "enable_search", search.enable_search, filters=filters.ChatType.GROUPS
+)
+disable_search_handler = CommandHandler(
+    "disable_search", search.disable_search, filters=filters.ChatType.GROUPS
+)
+message_search_handler = CommandHandler(
+    "search", search.search_message, filters=filters.ChatType.GROUPS
+)
+import_history_handler = CommandHandler(
+    "import_history", search.import_history, filters=filters.ChatType.GROUPS
+)
+update_index_handler = CommandHandler(
+    "update_index", search.update_index, filters=filters.ChatType.GROUPS
+)
+index_stats_handler = CommandHandler("index_stats", search.index_stats)
+clear_all_contents_handler = CommandHandler(
+    "clear_all_contents", reply.clear_all_contents
+)
+sr_handler = CommandHandler(
+    "sr", image.super_resolute, filters=~filters.UpdateType.EDITED
+)
+config_chat_handler = CommandHandler(
+    "config", chatconfig.config_chat_cmd, filters=filters.ChatType.GROUPS
+)
 
 # CallbackQueryHandlers
 start_callback_handler = CallbackQueryHandler(start.start, pattern="back_home")
-
 remove_waifu_handler = CallbackQueryHandler(waifu.remove_waifu, pattern="remove_waifu")
 user_waifu_manage_handler = CallbackQueryHandler(
     userdata.user_waifu_manage, pattern="user_waifu_manage|set_waifu_mention|divorce"
@@ -155,18 +184,47 @@ status_refresh_handler = CallbackQueryHandler(manage.status, pattern="status_ref
 clear_inactive_user_avatar_confirm_handler = CallbackQueryHandler(
     manage.clear_inactive_user_avatar, pattern="clear_inactive_user_avatar"
 )
-
-
-# others
-chat_migration_handler = MessageHandler(
-    filters.StatusUpdate.MIGRATE, chatdata.chat_migration
+delete_search_index_handler = CallbackQueryHandler(
+    search.delete_search_index, pattern="delete_search_index"
 )
-slash_handler = MessageHandler(kmua_filters.slash_filter, slash.slash)
+message_search_page_handler = CallbackQueryHandler(
+    search.search_message_page, pattern="message_search"
+)
+config_chat_callback_handler = CallbackQueryHandler(
+    chatconfig.config_chat_callback, pattern="config_chat"
+)
+
+
+# MessageHandlers
+slash_handler = MessageHandler(
+    kmua_filters.slash_filter & ~filters.UpdateType.EDITED, slash.slash
+)
+bililink_convert_handler = MessageHandler(
+    filters.ChatType.PRIVATE
+    & filters.Regex(r"b23.tv/[a-zA-Z0-9]+|bilibili.com/video/[a-zA-Z0-9]+"),
+    bilibili.bililink_convert,
+)
 random_quote_handler = MessageHandler(
     (~filters.COMMAND & filters.ChatType.GROUPS), quote.random_quote
 )
 reply_handler = MessageHandler(
-    (~filters.COMMAND & kmua_filters.reply_filter), reply.reply
+    (~filters.COMMAND & kmua_filters.reply_filter & ~filters.UpdateType.EDITED),
+    reply.reply,
+)
+sticker2img_handler = MessageHandler(
+    (filters.Sticker.ALL & filters.ChatType.PRIVATE), sticker.sticker2img
+)
+delete_event_message_handler = MessageHandler(
+    (kmua_filters.service_message_filter & filters.ChatType.SUPERGROUP),
+    delete_events.delete_event_message,
+)
+unpin_channel_pin_handler = MessageHandler(
+    kmua_filters.auto_forward_filter, pin.unpin_channel_pin
+)
+
+# others
+chat_migration_handler = MessageHandler(
+    filters.StatusUpdate.MIGRATE, chatdata.chat_migration
 )
 track_chats_handler = ChatMemberHandler(
     chatmember.track_chats, ChatMemberHandler.MY_CHAT_MEMBER
@@ -177,43 +235,12 @@ member_left_handler = MessageHandler(
 member_join_handler = MessageHandler(
     filters.StatusUpdate.NEW_CHAT_MEMBERS, chatmember.on_member_join
 )
-sticker2img_handler = MessageHandler(
-    (filters.Sticker.ALL & filters.ChatType.PRIVATE), sticker.sticker2img
-)
 chat_title_update_handler = MessageHandler(
     filters.ChatType.GROUPS & filters.StatusUpdate.NEW_CHAT_TITLE,
     chatdata.chat_title_update,
 )
-bililink_convert_handler = MessageHandler(
-    filters.ChatType.PRIVATE
-    & filters.Regex(r"b23.tv/[a-zA-Z0-9]+|bilibili.com/video/[a-zA-Z0-9]+"),
-    bilibili.bililink_convert,
-)
 inline_query_handler = InlineQueryHandler(quote.inline_query_quote)
-delete_event_message_handler = MessageHandler(
-    (kmua_filters.service_message_filter & filters.ChatType.SUPERGROUP),
-    delete_events.delete_event_message,
-)
-unpin_channel_pin_handler = MessageHandler(
-    kmua_filters.auto_forward_filter, pin.unpin_channel_pin
-)
 
-callback_query_handlers = [
-    user_data_manage_handler,
-    user_data_refresh_handler,
-    user_quote_manage_handler,
-    marry_waifu_handler,
-    chat_quote_manage_handler,
-    chat_quote_page_jump_handler,
-    set_title_permissions_callback_handler,
-    start_callback_handler,
-    remove_waifu_handler,
-    slash_handler,
-    user_waifu_manage_handler,
-    bot_data_refresh_handler,
-    status_refresh_handler,
-    clear_inactive_user_avatar_confirm_handler,
-]
 
 command_handlers = [
     start_handler,
@@ -245,7 +272,38 @@ command_handlers = [
     refresh_user_data_by_id_handler,
     switch_unpin_channel_pin_handler,
     reset_contents_handler,
+    fix_quotes_handler,
+    fix_chats_handler,
+    enable_search_handler,
+    disable_search_handler,
+    message_search_handler,
+    import_history_handler,
+    update_index_handler,
+    index_stats_handler,
+    clear_all_contents_handler,
+    sr_handler,
+    config_chat_handler,
 ]
+
+callback_query_handlers = [
+    user_data_manage_handler,
+    user_data_refresh_handler,
+    user_quote_manage_handler,
+    marry_waifu_handler,
+    chat_quote_manage_handler,
+    chat_quote_page_jump_handler,
+    set_title_permissions_callback_handler,
+    start_callback_handler,
+    remove_waifu_handler,
+    user_waifu_manage_handler,
+    bot_data_refresh_handler,
+    status_refresh_handler,
+    clear_inactive_user_avatar_confirm_handler,
+    delete_search_index_handler,
+    message_search_page_handler,
+    config_chat_callback_handler,
+]
+
 
 chatdata_handlers = [
     track_chats_handler,
@@ -258,25 +316,26 @@ chatdata_handlers = [
 message_handlers = [
     bililink_convert_handler,
     reply_handler,
+    slash_handler,
     sticker2img_handler,
     delete_event_message_handler,
     unpin_channel_pin_handler,
     random_quote_handler,
 ]
 
-other_handlers = [inline_query_handler]
+inline_query_handler_group = [inline_query_handler]
 
 
-async def on_error(update, context):
+async def on_error(update: Update, context):
     """
     出现未被处理的错误时回调
     """
     error = context.error
     # 如果聊天限制了 bot 发送消息, 忽略
     if error.__class__.__name__ == "BadRequest":
-        if error.message == "Chat_write_forbidden":
+        if "Chat_write_forbidden" in error.message:
             return
-        if error.message == "There is no caption in the message to edit":
+        if "There is no caption in the message to edit" in error.message:
             if update.callback_query:
                 await update.callback_query.answer(
                     "请使用 /start 重新召出菜单", show_alert=True, cache_time=600
@@ -288,8 +347,14 @@ async def on_error(update, context):
                     "请...请慢一点> <", show_alert=True, cache_time=1
                 )
             return
-        if "Not enough rights to send" in error.message:
+        if (
+            "Not enough rights to send" in error.message
+            or "Message to be replied not found" in error.message
+        ):
             return
+    elif error.__class__.__name__ == "TimedOut":
+        logger.warning(f"Timeout error\n{update}")
+        return
     elif error.__class__.__name__ == "Forbidden":
         if "bot was kicked from the supergroup chat" in error.message:
             return

@@ -70,7 +70,7 @@ async def set_bot_admin_in_chat(update: Update, context: ContextTypes.DEFAULT_TY
     logger.info(f"[{chat.title}]({user.name}) <promote_user_in_chat>")
     message = update.effective_message
     if not await common.verify_user_can_manage_bot_in_chat(user, chat, update, context):
-        await update.message.reply_text("你没有权限哦")
+        await message.reply_text("你没有权限哦")
         return
     to_promote_user_id = None
     if replied_message := message.reply_to_message:
@@ -87,6 +87,9 @@ async def set_bot_admin_in_chat(update: Update, context: ContextTypes.DEFAULT_TY
             return
     else:
         await message.reply_text("请输入正确的用户ID, 或者回复一条消息")
+        return
+    if to_promote_user_id == user.id:
+        await message.reply_text("不能对自己使用")
         return
     db_user = dao.get_user_by_id(to_promote_user_id)
     if not db_user:
@@ -142,21 +145,22 @@ async def leave_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.leave_chat(chat.id)
         return
     if not context.args:
-        await update.message.reply_text("请输入正确的群组ID")
+        await update.effective_message.reply_text("请输入正确的群组ID")
         return
     to_leave_chat_id = context.args[0]
     try:
         to_leave_chat_id = int(to_leave_chat_id)
     except ValueError:
-        await update.message.reply_text("请输入正确的群组ID")
+        await update.effective_message.reply_text("请输入正确的群组ID")
         return
+    dao.delete_chat_data_and_quotes(to_leave_chat_id)
     try:
         if await context.bot.leave_chat(to_leave_chat_id):
-            await update.message.reply_text("已离开群组")
+            await update.effective_message.reply_text("已离开群组")
         else:
-            await update.message.reply_text("离开群组失败")
+            await update.effective_message.reply_text("离开群组失败")
     except Exception as e:
-        await update.message.reply_text(f"离开群组失败: {e}")
+        await update.effective_message.reply_text(f"离开群组失败: {e}")
 
 
 async def clean_data_manually(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -240,4 +244,27 @@ async def error_notice_control(update: Update, context: ContextTypes.DEFAULT_TYP
     text = "已关闭" if is_enabled else "已开启"
     text += "错误通知"
     context.bot_data["error_notice"] = not is_enabled
-    await update.message.reply_text(text)
+    await update.effective_message.reply_text(text)
+
+
+async def fix_quotes(update: Update, _: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id not in settings.owners:
+        return
+    logger.info(f"{update.effective_user.name} <fix_quotes>")
+    await update.effective_message.reply_text("开始修复...")
+    quote_count, invalid_chat_count, failed_count = dao.fix_none_chat_id_quotes()
+    await update.effective_message.reply_text(
+        f"修复完成\n"
+        f"共找到 {quote_count} 条没有 chat_id 的 quote\n"
+        f"无效 chat_id 数量: {invalid_chat_count}\n"
+        f"失败数量: {failed_count}"
+    )
+
+
+async def fix_chats(update: Update, _: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id not in settings.owners:
+        return
+    logger.info(f"{update.effective_user.name} <fix_chats>")
+    await update.effective_message.reply_text("开始修复...")
+    count = dao.delete_no_supergroup_chats()
+    await update.effective_message.reply_text(f"修复完成\n共删除 {count} 个非超级群组")
